@@ -110,7 +110,7 @@ const SalesPage = () => {
             <table>
                 <thead>
                     <tr>
-                        <th>Product</th>
+                        <th>Product Sold</th>
                         <th>Quantity Sold</th>
                         <th>Selling Price</th>
                         <th>Profit</th>

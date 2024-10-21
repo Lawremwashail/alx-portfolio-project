@@ -1,7 +1,7 @@
 import { React, useContext, useState} from 'react'
-import axios from 'axios'; 
+// import axios from 'axios'; 
 import AuthContext from '../context/AuthContext';
-
+import { useNavigate } from 'react-router-dom';
 const LoginPage = () => {
     const {loginUser} = useContext(AuthContext)
     const [formData, setFormData] = useState({
@@ -12,6 +12,7 @@ const LoginPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState(null);
     const [error, setError] = useState(null);
+    const navigate = useNavigate(); // Hook for programmatic navigation
 
     const handleChange = (e) => {
         setFormData({...formData, [e.target.name]: e.target.value})
@@ -26,8 +27,13 @@ const LoginPage = () => {
             setSuccessMessage("User Logged In Successfully")
             setError(null)            
         } catch (error) {
-            setError(error.response?.data?.detail)
-            setSuccessMessage("Unable to Login the User")
+            if (error.response && error.response.status === 401) {
+                // If the error is due to unregistered user, redirect to registration page
+                navigate('/register');
+            } else {
+                setError(error.response?.data?.detail)
+                setSuccessMessage("Unable to Login the User")
+            }    
         } finally {
             setIsLoading(false)
         }
