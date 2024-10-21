@@ -78,6 +78,7 @@ class UserInfoAPIView(RetrieveAPIView):
         # return self.request.user
         
 class InventoryItems(APIView):
+    # permission_classes = [IsAuthenticated]
     def get(self, request):
         inventory = Inventory.objects.all()
         serializer = InventorySerializer(inventory, many=True)
@@ -91,6 +92,7 @@ class InventoryItems(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class InventoryDetail(APIView):
+    # permission_classes = [IsAuthenticated]
     def get_object(self, pk):
         return get_object_or_404(Inventory, pk=pk)
                 
@@ -118,7 +120,8 @@ class InventoryDetail(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class SalesView(APIView):
-      
+    # permission_classes = [IsAuthenticated]
+
     def get(self, request):
         sales = Sales.objects.all()
         serializer = SalesSerializer(sales, many=True)
@@ -127,6 +130,10 @@ class SalesView(APIView):
     def post(self, request):
         serializer = SalesSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            except ValueError as e:
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

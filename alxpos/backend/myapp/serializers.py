@@ -52,41 +52,32 @@ class InventorySerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'quantity', 'price']
 
 class SalesSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(read_only=True)  # Include the product name
-    product_sold = serializers.CharField(source='product_sold.product', read_only=True)
-    
+    product_sold = serializers.PrimaryKeyRelatedField(queryset=Inventory.objects.all(), write_only=True)  # Expecting product ID on input
+    product_name = serializers.CharField(source='product_sold.product', read_only=True)  # Display product name
+
     class Meta:
         model = Sales
-        fields = ['product_sold','product_name', 'quantity_sold', 'selling_price', 'profit', 'sale_date']
-
-        
+        fields = ['id', 'product_sold', 'product_name', 'quantity_sold', 'selling_price', 'profit', 'sale_date']
+            
     def create(self, validated_data):
-        product_name = validated_data['product_name']
+        product_sold = validated_data.pop('product_sold')  # Extract the product sold
         quantity_sold = validated_data['quantity_sold']
-        selling_price = validated_data['selling_price']
+        
+        # Check if enough inventory is available
+        if product_sold.quantity < quantity_sold:
+            raise serializers.ValidationError("Not enough stock to complete the sale")
 
-        try:
-            inventory_item = Inventory.objects.get(product=product_name)
-            if inventory_item.quantity < quantity_sold:
-                raise serializers.ValidationError('Not enough inventory')
+        # Update inventory
+        product_sold.quantity -= quantity_sold
+        product_sold.save()  # Save the updated quantity in the inventory
+        
+        # Calculate profit
+        total_cost = product_sold.price * quantity_sold
+        total_selling_price = validated_data['selling_price'] * quantity_sold
+        profit = total_selling_price - total_cost
 
-            # Update inventory
-            inventory_item.quantity -= quantity_sold
-            inventory_item.save()
+        # Create sale record
+        sale = Sales.objects.create(product_sold=product_sold, profit=profit, **validated_data)
+        return sale
 
-            # Calculate profit
-            cost_price = inventory_item.price
-            total_cost = cost_price * quantity_sold
-            total_revenue = selling_price * quantity_sold
-            profit = total_revenue - total_cost
 
-            # Create sale record
-            sale = Sales.objects.create(
-                product_sold=inventory_item,
-                quantity_sold=quantity_sold,
-                selling_price=selling_price,
-                profit=profit
-            )
-            return sale
-        except Inventory.DoesNotExist:
-            raise serializers.ValidationError('Product not found')
