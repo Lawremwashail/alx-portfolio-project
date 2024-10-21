@@ -16,5 +16,5 @@ class InventoryAdmin(admin.ModelAdmin):
     
 @admin.register(Sales)
 class SalesAdmin(admin.ModelAdmin):
-    list_display = ['product', 'quantity_sold', 'selling_price', 'sale_date', 'profit']
+    list_display = ['product_sold', 'quantity_sold', 'selling_price', 'sale_date', 'profit']
     list_filter = ['sale_date']

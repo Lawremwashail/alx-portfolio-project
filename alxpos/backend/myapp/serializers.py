@@ -52,21 +52,21 @@ class InventorySerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'quantity', 'price']
 
 class SalesSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product.product', read_only=True)  # Include the product name
-    product = serializers.PrimaryKeyRelatedField(queryset=Inventory.objects.all())
+    product_name = serializers.CharField(read_only=True)  # Include the product name
+    product_sold = serializers.CharField(source='product_sold.product', read_only=True)
     
     class Meta:
         model = Sales
-        fields = ['product','product_name', 'quantity_sold', 'selling_price', 'profit', 'sale_date']
+        fields = ['product_sold','product_name', 'quantity_sold', 'selling_price', 'profit', 'sale_date']
 
         
     def create(self, validated_data):
-        product = validated_data['product']
+        product_name = validated_data['product_name']
         quantity_sold = validated_data['quantity_sold']
         selling_price = validated_data['selling_price']
 
         try:
-            inventory_item = Inventory.objects.get(product=product)
+            inventory_item = Inventory.objects.get(product=product_name)
             if inventory_item.quantity < quantity_sold:
                 raise serializers.ValidationError('Not enough inventory')
 
@@ -82,7 +82,7 @@ class SalesSerializer(serializers.ModelSerializer):
 
             # Create sale record
             sale = Sales.objects.create(
-                product=inventory_item,
+                product_sold=inventory_item,
                 quantity_sold=quantity_sold,
                 selling_price=selling_price,
                 profit=profit

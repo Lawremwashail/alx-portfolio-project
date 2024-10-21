@@ -37,7 +37,7 @@ class Inventory(models.Model):
         return self.product
     
 class Sales(models.Model):
-    product = models.ForeignKey(Inventory, on_delete=models.CASCADE)  # link to inventory item
+    product_sold = models.ForeignKey(Inventory, on_delete=models.CASCADE) 
     quantity_sold = models.IntegerField(default=0)
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)
     sale_date = models.DateTimeField(auto_now_add=True)
@@ -45,15 +45,15 @@ class Sales(models.Model):
 
     def save(self, *args, **kwargs):
         # Check if there is enough quantity in stock
-        if self.product.quantity < self.quantity_sold:
+        if self.product_sold.quantity < self.quantity_sold:
             raise ValueError("Not enough stock to complete the sale")
 
         # Deduct quantity from inventory
-        self.product.quantity -= self.quantity_sold
-        self.product.save()  # Save the updated quantity in the inventory
+        self.product_sold.quantity -= self.quantity_sold
+        self.product_sold.save()  # Save the updated quantity in the inventory
 
         # Calculate cost from inventory
-        total_cost = self.product.price * self.quantity_sold
+        total_cost = self.product_sold.price * self.quantity_sold
         # Calculate total selling price
         total_selling_price = self.selling_price * self.quantity_sold
         # Calculate profit

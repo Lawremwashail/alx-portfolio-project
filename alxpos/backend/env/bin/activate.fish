@@ -29,7 +29,7 @@ end
 # unset irrelevant variables
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV "/home/lawrence/lawrence/alxpos/backend/env"
+set -gx VIRTUAL_ENV "/home/lawrence/lawrence/alx-portfolio-project/alxpos/backend/env"
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/bin" $PATH
