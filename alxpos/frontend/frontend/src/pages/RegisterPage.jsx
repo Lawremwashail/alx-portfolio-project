@@ -22,7 +22,7 @@ const RegisterPage = () => {
         setIsLoading(true);
 
         try {
-            const response = await axios.post("register Endpoint", formData)
+            const response = await axios.post("http://127.0.0.1:8000/api/register/", formData)
             console.log("Success", response.data)
             setSuccessMessage("Registered Successfully")
             setIsLoading(false);
@@ -34,7 +34,10 @@ const RegisterPage = () => {
     }
   return (
     <div>
-        <form>
+        <form onSubmit={handleSubmit}>
+            {
+                error ? (<p style={{color: "red"}}>Register Error: {error}</p>) : (successMessage && <p style={{color: "green"}}>Registered Successfully</p>) 
+            }
             <label>Username:</label>
             <input 
                 type='text'
@@ -63,7 +66,7 @@ const RegisterPage = () => {
                 value={formData.password2}
                 onChange={handleChange}
             />
-            <button onChange={handleSubmit}>Register</button>
+            <button type='submit' disabled={isLoading}>Register</button>
         </form>
     </div>
   )

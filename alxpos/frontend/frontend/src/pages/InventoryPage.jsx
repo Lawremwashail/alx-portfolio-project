@@ -42,8 +42,6 @@ const InventoryPage = () => {
         try {
             if (editingItem) {
                 await axios.put(`http://127.0.0.1:8000/api/inventory/${editingItem.id}/`, formData);
-                // setFormData({product: '', quantity: '', price: ''})
-                // setEditingItem(null);
             } else {
                 await axios.post(`http://127.0.0.1:8000/api/inventory/`, formData);
 

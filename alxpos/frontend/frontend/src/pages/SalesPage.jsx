@@ -20,6 +20,7 @@ const SalesPage = () => {
     const fetchProducts = async () => {
         try {
             const response = await axios.get("http://127.0.0.1:8000/api/inventory/");
+            console.log("Products fetched:", response.data)
             setProducts(response.data)
         } catch (error) {
             console.error("Error fetching products", error);
@@ -31,9 +32,10 @@ const SalesPage = () => {
     const fetchSales = async () => {
         try {
             const response = await axios.get("http://127.0.0.1:8000/api/sales/");
+            console.log("Sales fetched:", response.data);
             setSales(response.data)
         } catch (error) {
-            console.error("Error fetching sales", error);
+            console.error("Error fetching sales", error.response || error);
             setError("Failed Loading sales");            
         }
     }
@@ -49,8 +51,9 @@ const SalesPage = () => {
         e.preventDefault()
         try {
             const salesPayload = {
-                ...salesData,
-                product_sold: salesData.product_sold // Send product ID as `product_sold_id`
+                product_name: salesData.product_sold, // This should match the serializer's expected input
+                quantity_sold: salesData.quantity_sold,
+                selling_price: salesData.selling_price
             };
             await axios.post("http://127.0.0.1:8000/api/sales/", salesPayload);
             setSalesData({
