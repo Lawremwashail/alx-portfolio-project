@@ -126,6 +126,7 @@ class SalesView(APIView):
         sales = Sales.objects.all()
         serializer = SalesSerializer(sales, many=True)
         return Response(serializer.data)
+    
 
     def post(self, request):
         serializer = SalesSerializer(data=request.data)
