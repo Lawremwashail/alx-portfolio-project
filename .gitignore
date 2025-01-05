@@ -1,0 +1,36 @@
+# Backend (Django) Specific
+# Ignore virtual environment
+backend/env/
+
+# Ignore database files
+backend/db.sqlite3
+
+# Ignore Python bytecode files
+backend/__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+
+# Ignore Django migrations
+backend*/migrations/
+
+# Frontend (React) Specific
+# Ignore node_modules folder
+frontend/frontend/node_modules/
+
+# Ignore build folder
+frontend/frontend/build/
+
+# Ignore npm log files
+frontend/frontend/npm-debug.log
+frontend/frontend/yarn-debug.log
+frontend/frontend/yarn-error.log
+
+# Ignore environment variables (if you use any)
+frontend/frontend/.env
+
+# Ignore IDE and OS-specific files (if you're using certain IDEs)
+.idea/
+.vscode/
+*.log
+
