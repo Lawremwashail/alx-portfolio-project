@@ -12,5 +12,6 @@ urlpatterns = [
     path("user/", views.UserInfoAPIView.as_view(), name="user-info"),
     path('inventory/', views.InventoryItems.as_view(), name='inventory_items'),
     path('inventory/<int:pk>/', views.InventoryDetail.as_view(), name='inventory_detail'),
-    path('sales/', views.SalesView.as_view(), name='sales'),  # Ensure this URL pattern is added
+    path('sales/', views.SalesListCreateView.as_view(), name='sales'),  # Ensure this URL pattern is added
+    path('sales/<int:pk>', views.SalesDetailView.as_view(), name='sales'),  # Ensure this URL pattern is added
 ]

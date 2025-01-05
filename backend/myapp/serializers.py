@@ -50,21 +50,11 @@ class UserLoginSerializer(serializers.Serializer):
         raise serializers.ValidationError("Invalid email or password")
 
 class InventorySerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
     class Meta:
         model = Inventory
         fields = ['id', 'user', 'product', 'quantity', 'price']
-
-class SalesSerializer(serializers.ModelSerializer):
-    product_name = serializers.CharField(source='product_sold.product')
-    class Meta:
-        model = Sales
-        fields = ['id', 'product_sold', 'quantity_sold', 'selling_price', 'profit', 'sale_date', 'user', 'product_name']
-
-    def create(self, validated_data):
-        sale = Sales(**validated_data)
-        sale.save()
-        return sale
-
+        # read_only_fields = ['id']
 
 class SalesSerializer(serializers.ModelSerializer):
     created_by = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Set the user making the sale (read-only)

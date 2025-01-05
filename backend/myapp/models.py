@@ -43,8 +43,15 @@ class Sales(models.Model):
 
     def save(self, *args, **kwargs):
         # Ensure the inventory belongs to the admin who created the sales user
-        if self.product_sold.user != self.user.created_by:
-            raise ValueError("Sales user and Inventory user mismatch with the admin user")
+        # if self.product_sold.user != self.user.created_by:
+        #     raise ValueError("Sales user and Inventory user mismatch with the admin user")
+        if self.user.role != 'admin' and self.product_sold.user != self.user.created_by:
+            raise ValueError("Sales user can only sell inventory assigned by their admin user")
+
+        # Admins can sell inventory that they own
+        if self.user.role == 'admin' and self.product_sold.user != self.user:
+            raise ValueError("Admin can only sell their own inventory")
+
 
         # Check if there is enough quantity in stock
         if self.product_sold.quantity < self.quantity_sold:
@@ -62,25 +69,6 @@ class Sales(models.Model):
         self.profit = total_selling_price - total_cost
 
         super(Sales, self).save(*args, **kwargs)
-    
-    
-    # def save(self, *args, **kwargs):
-    #     #inventory for same user
-    #     if self.product_sold.user != self.user:
-    #         raise ValueError("Inventory and Sales user mismatch")
-    #     # Check if there is enough quantity in stock
-    #     if self.product_sold.quantity < self.quantity_sold:
-    #         raise ValueError("Not enough stock to complete the sale")
 
-    #     # Deduct quantity from inventory
-    #     self.product_sold.quantity -= self.quantity_sold
-    #     self.product_sold.save()  # Save the updated quantity in the inventory
-
-    #     # Calculate cost from inventory
-    #     total_cost = self.product_sold.price * self.quantity_sold
-    #     # Calculate total selling price
-    #     total_selling_price = self.selling_price * self.quantity_sold
-    #     # Calculate profit
-    #     self.profit = total_selling_price - total_cost
-
-    #     super(Sales, self).save(*args, **kwargs)
+    def __str__(self):
+        return f"Sale of {self.product_sold.product} by {self.user} on {self.sale_date}" 

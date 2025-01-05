@@ -12,7 +12,7 @@ const PrivateRoute = ({ children, adminOnly = false }) => {
 
     if (adminOnly && user.role !== 'admin') {
         // If it's an admin route but the user is not an admin, redirect to sales page or other accessible page
-        return <Navigate to="/sales" />;
+        return <Navigate to="/" />;
     }
 
     // If user has access, render the children (the protected content)

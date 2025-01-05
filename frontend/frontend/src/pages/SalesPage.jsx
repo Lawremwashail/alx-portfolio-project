@@ -19,22 +19,27 @@ const SalesPage = () => {
         if (authTokens && user && user.id) {
             const fetchData = async () => {
                 try {
-
                     const productResponse = await axios.get('http://127.0.0.1:8000/api/inventory/', {
                         headers: { Authorization: `Bearer ${authTokens.access}` },
                     });
-
-                    const filteredProducts = productResponse.data.filter(
-                        product => product.created_by === user.id || product.user === user.id
-                    );
-
+    
+                    // Assuming admin can see all products for any user, and users only see products they created
+                    const filteredProducts = user.role === 'admin' 
+                        ? productResponse.data 
+                        : productResponse.data.filter(product => product.created_by === user.id);
+    
                     setProducts(filteredProducts);
-
+    
                     const salesResponse = await axios.get('http://127.0.0.1:8000/api/sales/', {
                         headers: { Authorization: `Bearer ${authTokens.access}` },
                     });
-                    setSales(salesResponse.data);
-
+                    
+                    // Assuming only products associated with the logged-in user/admin are shown in the sales records
+                    const filteredSales = user.role === 'admin'
+                        ? salesResponse.data
+                        : salesResponse.data.filter(sale => sale.user === user.id);
+    
+                    setSales(filteredSales);
                     setIsLoading(false);
                 } catch (error) {
                     console.error('Error fetching data:', error);
@@ -46,11 +51,11 @@ const SalesPage = () => {
                     setIsLoading(false);
                 }
             };
-
+    
             fetchData();
         } else {
             setIsLoading(false);
-            setError("User  not found or invalid token");
+            setError("User not found or invalid token");
         }
     }, [authTokens, user]);
 
