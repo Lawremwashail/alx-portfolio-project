@@ -157,7 +157,7 @@ class SalesListCreateView(APIView):
         if request.user.role == 'admin':
             sales = Sales.objects.all()
         else:
-            sales = Sales.objects.filter(user=request.user.created_by)
+            sales = Sales.objects.filter(product_sold__user=request.user.created_by)
 
         serializer = SalesSerializer(sales, many=True)
         return Response(serializer.data)
@@ -165,7 +165,7 @@ class SalesListCreateView(APIView):
     def post(self, request):
         serializer = SalesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(admin=request.user)
+            serializer.save(user=request.user, created_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

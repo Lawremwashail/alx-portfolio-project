@@ -133,8 +133,8 @@ const InventoryPage = () => {
                 </form>
             </div>
             <div className='scroll-table'>
-                <table>
                 <h3>Current Stock</h3>
+                <table>
                     <thead>
                         <tr>
                             <th>Product</th>

@@ -5,7 +5,7 @@ import './Header.css'
 
 const Header = () => {
     const { user, logoutUser } = useContext(AuthContext);
-    console.log("User Token:", JSON.stringify(user));
+    // console.log("User Token:", JSON.stringify(user));
 
 const getActiveClass = ({ isActive }) => (isActive ? 'active-link' : '');
 

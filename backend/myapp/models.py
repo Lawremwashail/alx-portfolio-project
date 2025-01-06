@@ -31,7 +31,7 @@ class Inventory(models.Model):
         return self.product
     
 class Sales(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="sales_user")  # You can leave this as is
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="sales")  # You can leave this as is
     product_sold = models.ForeignKey(Inventory, on_delete=models.CASCADE) 
     quantity_sold = models.IntegerField(default=0)
     selling_price = models.DecimalField(max_digits=10, decimal_places=2)

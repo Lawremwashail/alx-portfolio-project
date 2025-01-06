@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
     const updateToken = useCallback(async () => {
         try {
-            let response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+            const response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
                 refresh: authTokens?.refresh,
             });
 

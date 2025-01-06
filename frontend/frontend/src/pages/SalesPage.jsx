@@ -7,7 +7,7 @@ const SalesPage = () => {
     const { authTokens, user } = useContext(AuthContext);
     const [products, setProducts] = useState([]);
     const [salesData, setSalesData] = useState({
-        product_sold: '',
+        product_name: '',
         quantity_sold: '',
         selling_price: ''
     });
@@ -16,47 +16,53 @@ const SalesPage = () => {
     const [sales, setSales] = useState([]);
 
     useEffect(() => {
-        if (authTokens && user && user.id) {
-            const fetchData = async () => {
+        const fetchData = async () => {
+            if (authTokens && user && user.id) {
+                console.log('User ID:', user.id);
                 try {
                     const productResponse = await axios.get('http://127.0.0.1:8000/api/inventory/', {
-                        headers: { Authorization: `Bearer ${authTokens.access}` },
+                        headers: { Authorization: `Bearer ${authTokens.access}` }
                     });
-    
-                    // Assuming admin can see all products for any user, and users only see products they created
-                    const filteredProducts = user.role === 'admin' 
-                        ? productResponse.data 
-                        : productResponse.data.filter(product => product.created_by === user.id);
-    
+                    console.log('Products Data:', productResponse.data);
+
+                    const filteredProducts = user.role === 'admin'
+                        ? productResponse.data
+                        : productResponse.data.filter((product) => product.created_by === user.id);
+                    
+                    console.log('Filtered Products:', filteredProducts);
+
                     setProducts(filteredProducts);
-    
+
                     const salesResponse = await axios.get('http://127.0.0.1:8000/api/sales/', {
                         headers: { Authorization: `Bearer ${authTokens.access}` },
+                        
                     });
-                    
-                    // Assuming only products associated with the logged-in user/admin are shown in the sales records
+                    console.log('Sales Data:', salesResponse.data);
+
                     const filteredSales = user.role === 'admin'
                         ? salesResponse.data
-                        : salesResponse.data.filter(sale => sale.user === user.id);
-    
+                        : salesResponse.data.filter((sale) => sale.created_by === user.id);
+                    
+                    console.log('Filtered Sales:', filteredSales);
+
                     setSales(filteredSales);
-                    setIsLoading(false);
-                } catch (error) {
-                    console.error('Error fetching data:', error);
-                    if (error.response && error.response.status === 401) {
+                } catch (err) {
+                    console.error('Error fetching data:', err);
+                    if (err.response && err.response.status === 401) {
                         setError('Session expired. Please log in again.');
                     } else {
-                        setError('Failed to fetch data');
+                        setError('Failed to fetch data. Please try again later.');
                     }
+                } finally {
                     setIsLoading(false);
                 }
-            };
-    
-            fetchData();
-        } else {
-            setIsLoading(false);
-            setError("User not found or invalid token");
-        }
+            } else {
+                setIsLoading(false);
+                setError('User not found or invalid token.');
+            }
+        };
+
+        fetchData();
     }, [authTokens, user]);
 
     const handleChange = (e) => {
@@ -69,18 +75,29 @@ const SalesPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const selectedProduct = products.find(
+                (product) => product.id === parseInt(salesData.product_name)
+            );
+            if (!selectedProduct) {
+                setError('Selected product not found.');
+                return;
+            }
+
             const salesPayload = {
-                product_name: salesData.product_sold,
+                product_name: selectedProduct.product, // Send product name to backend
                 quantity_sold: salesData.quantity_sold,
-                selling_price: salesData.selling_price
+                selling_price: salesData.selling_price,
             };
+
             await axios.post('http://127.0.0.1:8000/api/sales/', salesPayload, {
                 headers: { Authorization: `Bearer ${authTokens?.access}` },
+                
             });
+
             setSalesData({
-                product_sold: '',
+                product_name: '',
                 quantity_sold: '',
-                selling_price: ''
+                selling_price: '',
             });
             // Refetch products and sales after posting new sale
             const productResponse = await axios.get('http://127.0.0.1:8000/api/inventory/', {
@@ -89,12 +106,14 @@ const SalesPage = () => {
             setProducts(productResponse.data);
 
             const salesResponse = await axios.get('http://127.0.0.1:8000/api/sales/', {
-                headers: { Authorization: `Bearer ${authTokens.access}` },
+                headers: { Authorization: `Bearer ${authTokens.access}` }
             });
             setSales(salesResponse.data);
-        } catch (error) {
-            setError('Failed to create sale');
-            console.error(error);
+
+            setError(null); // Clear any previous error
+        } catch (err) {
+            setError('Failed to create sale. Please try again.');
+            console.error(err);
         }
     };
 
@@ -105,10 +124,11 @@ const SalesPage = () => {
         <div className='container'>
             <h2>Sales Page</h2>
             <div className="form-container">
+                {/* {user?.role === 'admin' && <p>Admins can view additional sales insights here.</p>} */}
                 <form onSubmit={handleSubmit}>
                     <select
-                        name='product_sold'
-                        value={salesData.product_sold}
+                        name='product_name'
+                        value={salesData.product_name}
                         onChange={handleChange}
                         required
                     >
@@ -140,8 +160,8 @@ const SalesPage = () => {
                 </form>
             </div>
             <div  className='scroll-table'>
-                <table>
                 <h3>Sales Records</h3>
+                <table>
                     <thead>
                         <tr>
                             <th>Product Sold</th>
@@ -154,7 +174,7 @@ const SalesPage = () => {
                     <tbody>
                         {sales.map((sale) => (
                             <tr key={sale.id}>
-                                <td>{sale.product_sold}</td>
+                                <td>{sale.product_name}</td>
                                 <td>{sale.quantity_sold}</td>
                                 <td>
                                     {sale.selling_price !== undefined && sale.selling_price !== null

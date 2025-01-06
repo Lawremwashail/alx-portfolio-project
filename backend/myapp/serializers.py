@@ -70,18 +70,22 @@ class SalesSerializer(serializers.ModelSerializer):
         user = self.context['request'].user
         product_name = validated_data.pop('product_name')  # Get the product name string
 
-        # Find the corresponding Inventory object by product name and the user's admin
-        try:
-            product_instance = Inventory.objects.get(product=product_name, user=user.created_by)
-        except Inventory.DoesNotExist:
-            raise serializers.ValidationError("Product does not exist or is not associated with this user.")
+        # Admins: Look for products they own directly
+        if user.role == 'admin':
+            try:
+                product_instance = Inventory.objects.get(product=product_name, user=user)
+            except Inventory.DoesNotExist:
+                raise serializers.ValidationError("Product does not exist or is not associated with this admin.")
 
-        # Allow admins and users linked to the admin to bypass the ownership check
-        if not user.is_staff and product_instance.user != user.created_by:
-            raise serializers.ValidationError("You can only sell from your admin's inventory.")
+        # Users: Look for products owned by their associated admin
+        else:
+            try:
+                product_instance = Inventory.objects.get(product=product_name, user=user.created_by)
+            except Inventory.DoesNotExist:
+                raise serializers.ValidationError("Product does not exist or is not associated with your admin.")
 
         validated_data.pop('product_sold', None)
-        # Create the sales record (do not pass created_by here, it's already handled by the serializer)
+        # Create the sales record (created_by is handled by the serializer)
         sale = Sales.objects.create(product_sold=product_instance, **validated_data)
 
         return sale
