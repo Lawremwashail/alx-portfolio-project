@@ -55,7 +55,7 @@ class UserLoginAPIView(GenericAPIView):
 
 # Admin Add User View
 class AdminAddUserAPIView(APIView):
-    permission_classes = [IsAdminUser]
+    permission_classes = [IsAdmin]
 
     def post(self, request):
         serializer = UserRegistrationSerializer(data=request.data, context={'request': request})
@@ -101,115 +101,139 @@ class UserInfoAPIView(RetrieveAPIView):
 
 # Inventory Views
 class InventoryItems(APIView):
-    permission_classes = [IsAdmin]
+    permission_classes = [IsUserOrAdmin]
 
     def get(self, request):
-        inventory = Inventory.objects.all()
-        serializer = InventorySerializer(inventory, many=True)
+        if request.user.role == 'admin':
+            inventory = Inventory.objects.filter(created_by=request.user)
+        else:
+            inventory = Inventory.objects.filter(created_by=request.user.created_by)
+        
+
+        if not inventory:
+            return Response({"message": "No items found."}, status=status.HTTP_200_OK)
+        
+        class ProductNameSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = Inventory
+                fields = ['id', 'product', 'quantity', 'price'] 
+
+        serializer = ProductNameSerializer(inventory, many=True)
         return Response(serializer.data)
 
     def post(self, request):
+        # Admin-only post to add inventory items
+        if request.user.role != 'admin':
+            return Response({'detail': 'Only admins can add inventory.'}, status=status.HTTP_403_FORBIDDEN)
+
         serializer = InventorySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(created_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class InventoryDetail(APIView):
-    permission_classes = [IsAdmin]  # Only admins can modify inventory
+    permission_classes = [IsAdmin]
 
     def get(self, request, pk):
-        try:
-            item = Inventory.objects.get(pk=pk)
-        except Inventory.DoesNotExist:
-            return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+        item = get_object_or_404(Inventory, pk=pk)
         serializer = InventorySerializer(item)
         return Response(serializer.data)
 
     def put(self, request, pk):
-        try:
-            item = Inventory.objects.get(pk=pk)
-        except Inventory.DoesNotExist:
-            return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        serializer = InventorySerializer(item, data=request.data)
+        item = get_object_or_404(Inventory, pk=pk)
+        serializer = InventorySerializer(item, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        try:
-            item = Inventory.objects.get(pk=pk)
-        except Inventory.DoesNotExist:
-            return Response({"error": "Item not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+        item = get_object_or_404(Inventory, pk=pk)
         item.delete()
         return Response({"message": "Item deleted."}, status=status.HTTP_200_OK)
 
-
 class SalesListCreateView(APIView):
-    permission_classes = [IsUserOrAdmin]  # Admins and Users can access
+    permission_classes = [IsUserOrAdmin]
 
     def get(self, request):
         if request.user.role == 'admin':
-            sales = Sales.objects.all()
+            # Admins see all sales related to their inventory, including their own and sales by users they created
+            sales = Sales.objects.filter(product_sold__created_by=request.user)
         else:
-            sales = Sales.objects.filter(product_sold__user=request.user.created_by)
+            # Users see only their own sales
+            sales = Sales.objects.filter(created_by=request.user)
 
-        serializer = SalesSerializer(sales, many=True)
+        serializer = SalesSerializer(sales, many=True, context={'request': request})
         return Response(serializer.data)
 
     def post(self, request):
         serializer = SalesSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(user=request.user, created_by=request.user)
+            product_name = request.data.get('product_name')
+            product = Inventory.objects.filter(product=product_name).first()
+
+            if not product:
+                return Response({"error": "Product not found."}, status=status.HTTP_404_NOT_FOUND)
+
+
+            if request.user.role == 'user':
+                if product.created_by != request.user.created_by:
+                    return Response({"error": "You are not authorized to sell this product."}, status=status.HTTP_403_FORBIDDEN)
+
+            if request.user.role == 'admin' and product.created_by != request.user:
+                return Response({"error": "You are not authorized to sell this product."}, status=status.HTTP_403_FORBIDDEN)
+
+            
+            # Save the sale
+            serializer.save(created_by=request.user)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class SalesDetailView(APIView):
-    permission_classes = [IsUserOrAdmin]  # Admins and Users can access
-
-    def get_object(self, pk):
-        try:
-            return Sales.objects.get(pk=pk)
-        except Sales.DoesNotExist:
-            return None
+    permission_classes = [IsUserOrAdmin]
 
     def get(self, request, pk):
-        sale = self.get_object(pk)
-        if sale is None:
-            return Response({"error": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
-        
-        # Check if the user has permission to access this sale
-        if request.user.role == 'user' and sale.admin != request.user.created_by:
+        sale = get_object_or_404(Sales, pk=pk)
+
+        # Users can only view their own sales
+        if request.user.role == 'user' and sale.created_by != request.user:
             return Response({"error": "You do not have permission to access this sale."}, status=status.HTTP_403_FORBIDDEN)
-        
-        serializer = SalesSerializer(sale)
+
+        # Admins can only view sales related to their inventory
+        if request.user.role == 'admin' and sale.product_sold.created_by != request.user:
+            return Response({"error": "You do not have permission to view this sale."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = SalesSerializer(sale, context={'request': request})
         return Response(serializer.data)
 
     def put(self, request, pk):
-        sale = self.get_object(pk)
-        if sale is None:
-            return Response({"error": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
+        # PUT is restricted to admins only
+        if request.user.role != 'admin':
+            return Response({"error": "Only admins can modify sales."}, status=status.HTTP_403_FORBIDDEN)
 
-        if request.user.role == 'user' and sale.admin != request.user.created_by:
+        sale = get_object_or_404(Sales, pk=pk)
+
+        # Admins can only modify sales related to their inventory
+        if sale.product_sold.created_by != request.user:
             return Response({"error": "You do not have permission to modify this sale."}, status=status.HTTP_403_FORBIDDEN)
-        
-        serializer = SalesSerializer(sale, data=request.data)
+
+        serializer = SalesSerializer(sale, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        sale = self.get_object(pk)
-        if sale is None:
-            return Response({"error": "Sale not found."}, status=status.HTTP_404_NOT_FOUND)
+        # DELETE is restricted to admins only
+        if request.user.role != 'admin':
+            return Response({"error": "Only admins can delete sales."}, status=status.HTTP_403_FORBIDDEN)
 
-        if request.user.role == 'user' and sale.admin != request.user.created_by:
+        sale = get_object_or_404(Sales, pk=pk)
+
+        # Admins can only delete sales related to their inventory
+        if sale.product_sold.created_by != request.user:
             return Response({"error": "You do not have permission to delete this sale."}, status=status.HTTP_403_FORBIDDEN)
 
         sale.delete()

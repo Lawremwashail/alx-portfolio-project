@@ -23,7 +23,7 @@ const getActiveClass = ({ isActive }) => (isActive ? 'active-link' : '');
           ) : (
             <>
               <NavLink to="/login" className={getActiveClass}>Login</NavLink>
-              <NavLink to="/register" className={getActiveClass}>Register</NavLink>
+              {/* <NavLink to="/register" className={getActiveClass}>Register</NavLink> */}
             </>
           )}
         </div>

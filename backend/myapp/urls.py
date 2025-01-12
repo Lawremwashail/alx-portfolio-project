@@ -3,6 +3,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from django.urls import path
 from . import views
 
+app_name = 'myappp'
 urlpatterns = [
     path("register/", views.UserRegistrationAPIView.as_view(), name="register-user"),
     path("login/", views.UserLoginAPIView.as_view(), name="login-user"),
@@ -12,6 +13,6 @@ urlpatterns = [
     path("user/", views.UserInfoAPIView.as_view(), name="user-info"),
     path('inventory/', views.InventoryItems.as_view(), name='inventory_items'),
     path('inventory/<int:pk>/', views.InventoryDetail.as_view(), name='inventory_detail'),
-    path('sales/', views.SalesListCreateView.as_view(), name='sales'),  # Ensure this URL pattern is added
-    path('sales/<int:pk>', views.SalesDetailView.as_view(), name='sales'),  # Ensure this URL pattern is added
+    path('sales/', views.SalesListCreateView.as_view(), name='sales-list-create'),  # Ensure this URL pattern is added
+    path('sales/<int:pk>/', views.SalesDetailView.as_view(), name='sales-detail'),  # Ensure this URL pattern is added
 ]

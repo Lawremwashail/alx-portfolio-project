@@ -19,7 +19,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['username', 'email', 'password', 'password2', 'role']
+        fields = ['id', 'username', 'email', 'password', 'password2', 'role']
+        read_only_fields = ['id']
 
     def validate(self, attrs):
         if attrs['password'] != attrs['password2']:
@@ -50,42 +51,85 @@ class UserLoginSerializer(serializers.Serializer):
         raise serializers.ValidationError("Invalid email or password")
 
 class InventorySerializer(serializers.ModelSerializer):
-    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+    created_by = serializers.HiddenField(default=serializers.CurrentUserDefault())
     class Meta:
         model = Inventory
-        fields = ['id', 'user', 'product', 'quantity', 'price']
-        # read_only_fields = ['id']
+        fields = ['id', 'product', 'quantity', 'price', 'created_by']
+        read_only_fields = ['created_by']
+
+    def validate(self, attrs):
+        # Ensure admins can only add inventory to their own account
+        user = self.context['request'].user
+        if user.role != 'admin':
+            raise serializers.ValidationError("Only admins can add inventory.")
+        return attrs
 
 class SalesSerializer(serializers.ModelSerializer):
-    created_by = serializers.HiddenField(default=serializers.CurrentUserDefault())  # Set the user making the sale (read-only)
+    created_by = serializers.HiddenField(default=serializers.CurrentUserDefault())  # User making the sale (read-only)
     product_name = serializers.CharField(write_only=True)  # Expecting product name as input
     product_sold = serializers.CharField(source='product_sold.product', read_only=True)  # Display product name (read-only)
-    
+
     class Meta:
         model = Sales
         fields = ['id', 'product_name', 'product_sold', 'quantity_sold', 'selling_price', 'profit', 'sale_date', 'created_by']
-        read_only_fields = ['product_sold', 'created_by']  # Ensure these fields are not editable via the API
+        read_only_fields = ['product_sold', 'created_by']  # These fields should not be editable via the API
 
     def create(self, validated_data):
-        user = self.context['request'].user
+        user = self.context['request'].user  # Get the logged-in user
         product_name = validated_data.pop('product_name')  # Get the product name string
 
         # Admins: Look for products they own directly
         if user.role == 'admin':
             try:
-                product_instance = Inventory.objects.get(product=product_name, user=user)
+                product_instance = Inventory.objects.get(product=product_name, created_by=user)
             except Inventory.DoesNotExist:
                 raise serializers.ValidationError("Product does not exist or is not associated with this admin.")
-
         # Users: Look for products owned by their associated admin
         else:
             try:
-                product_instance = Inventory.objects.get(product=product_name, user=user.created_by)
+                product_instance = Inventory.objects.get(product=product_name, created_by=user.created_by)
             except Inventory.DoesNotExist:
                 raise serializers.ValidationError("Product does not exist or is not associated with your admin.")
 
+        if product_instance.quantity < validated_data['quantity_sold']:
+            raise serializers.ValidationError("Not enough stock to complete the sale.")
+
+        # Update the inventory
+        product_instance.quantity -= validated_data['quantity_sold']
+        product_instance.save()
+
+        # Calculate profit
+        validated_data['profit'] = (
+            validated_data['selling_price'] * validated_data['quantity_sold']
+        ) - (product_instance.price * validated_data['quantity_sold'])
+
+        # Set the user who is making the sale
+        validated_data['user'] = user 
+
         validated_data.pop('product_sold', None)
-        # Create the sales record (created_by is handled by the serializer)
+
         sale = Sales.objects.create(product_sold=product_instance, **validated_data)
 
         return sale
+
+    def to_representation(self, instance):
+        """
+        Customize the representation based on the user's role:
+        - Admins see all related sales, but filter by their own inventory
+        - Admins also see sales of the users they have created/registered
+        - Users only see their sales
+        """
+        request = self.context.get('request')
+        if request is not None and request.user is not None:
+            if request.user.role == 'user' and instance.created_by != request.user:
+                raise serializers.ValidationError("You can only view your own sales.")
+
+            # Admins can view sales made by users they have created/registered
+            if request.user.role == 'admin':
+                # If the sale's created_by is either the admin or a user created by the admin, show it
+                if instance.product_sold.created_by != request.user and instance.created_by != request.user:
+                    raise serializers.ValidationError("You can only view sales of your products or users you registered.")
+        else:
+            raise serializers.ValidationError("Request user is not available in the context.")
+
+        return super().to_representation(instance)

@@ -24,7 +24,7 @@ const InventoryPage = () => {
                     Authorization: `Bearer ${authTokens?.access}`,
                 }
             });
-            setProducts(response.data);
+            setProducts(Array.isArray(response.data) ? response.data : []);
             setError(null); // Reset error on successful fetch
         } catch (error) {
             setError('Failed to load products. Please try again.');
@@ -101,7 +101,7 @@ const InventoryPage = () => {
     return (
         <div className='container'>
             <h2>Inventory</h2>
-
+            <p>This Page Contains Available Stock</p>
             <div className="form-container">
                 <form onSubmit={handleSubmit}>
                     <input
@@ -133,7 +133,6 @@ const InventoryPage = () => {
                 </form>
             </div>
             <div className='scroll-table'>
-                <h3>Current Stock</h3>
                 <table>
                     <thead>
                         <tr>
@@ -154,8 +153,8 @@ const InventoryPage = () => {
                                         : '$0.00'}
                                 </td>
                                 <td>
-                                    <button className='container-button' onClick={() => handleEdit(product)}>Edit</button>
-                                    <button className='container-button' onClick={() => handleDelete(product.id)}>Delete</button>
+                                    <button className='scroll-table-button' onClick={() => handleEdit(product)}>Edit</button>
+                                    <button className='scroll-table-button' onClick={() => handleDelete(product.id)}>Delete</button>
                                 </td>
                             </tr>
                         ))}
