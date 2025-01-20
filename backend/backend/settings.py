@@ -1,6 +1,7 @@
 
 from pathlib import Path
 from datetime import timedelta
+import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -9,7 +10,7 @@ SECRET_KEY = 'django-insecure-&uo$%_7q_1e0&3kg79qj1=qc&4zmb%c@2*=z3#%^^ejf8w8q_$
 
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', '172.26.175.206']
 
 AUTH_USER_MODEL = 'myapp.CustomUser'
 
@@ -110,6 +111,11 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
