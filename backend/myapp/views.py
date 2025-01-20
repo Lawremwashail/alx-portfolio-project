@@ -12,6 +12,7 @@ from .decorators import IsAdmin, IsUserOrAdmin
 from rest_framework.permissions import IsAdminUser
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.shortcuts import get_object_or_404
+from django.core.cache import cache
 
 # Custom Token Serializer
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -74,6 +75,7 @@ class AdminAddUserAPIView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 # User Logout View
 class UserLogoutAPIView(GenericAPIView):
     permission_classes = [IsAuthenticated]
@@ -104,6 +106,12 @@ class InventoryItems(APIView):
     permission_classes = [IsUserOrAdmin]
 
     def get(self, request):
+        cache_key = f"inventory_{request.user.id}_{request.user.role}"
+        cached_inventory = cache.get(cache_key)
+
+        if cached_inventory is not None:
+            return Response(cached_inventory)
+        
         if request.user.role == 'admin':
             inventory = Inventory.objects.filter(created_by=request.user)
         else:
@@ -119,6 +127,8 @@ class InventoryItems(APIView):
                 fields = ['id', 'product', 'quantity', 'price'] 
 
         serializer = ProductNameSerializer(inventory, many=True)
+        
+        cache.set(cache_key, serializer.data, timeout=3600)
         return Response(serializer.data)
 
     def post(self, request):
@@ -129,6 +139,10 @@ class InventoryItems(APIView):
         serializer = InventorySerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save(created_by=request.user)
+            
+            cache_key = f"inventory_{request.user.id}_{request.user.role}"
+            cache.delete(cache_key)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -145,18 +159,33 @@ class InventoryDetail(APIView):
         serializer = InventorySerializer(item, data=request.data, partial=True, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+
+            cache_key = f"inventory_{request.user.id}_{request.user.role}"
+            cache.delete(cache_key)
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
         item = get_object_or_404(Inventory, pk=pk)
         item.delete()
+
+        cache_key = f"inventory_{request.user.id}_{request.user.role}"
+        cache.delete(cache_key)
+
         return Response({"message": "Item deleted."}, status=status.HTTP_200_OK)
 
 class SalesListCreateView(APIView):
     permission_classes = [IsUserOrAdmin]
 
     def get(self, request):
+
+        cached_key = f"sales_{request.user.id}_{request.user.role}"
+        cached_sales = cache.get(cached_key)
+
+        if cached_sales is not None:
+            return Response(cached_sales)
+        
         if request.user.role == 'admin':
             # Admins see all sales related to their inventory, including their own and sales by users they created
             sales = Sales.objects.filter(product_sold__created_by=request.user)
@@ -165,6 +194,8 @@ class SalesListCreateView(APIView):
             sales = Sales.objects.filter(created_by=request.user)
 
         serializer = SalesSerializer(sales, many=True, context={'request': request})
+        cache.set(cached_key, serializer.data, timeout=3600)
+
         return Response(serializer.data)
 
     def post(self, request):
@@ -187,6 +218,10 @@ class SalesListCreateView(APIView):
             
             # Save the sale
             serializer.save(created_by=request.user)
+            
+            cache_key = f"sales_{request.user.id}_{request.user.role}"
+            cache.delete(cache_key)
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -195,6 +230,13 @@ class SalesDetailView(APIView):
     permission_classes = [IsUserOrAdmin]
 
     def get(self, request, pk):
+
+        cache_key = f"sales_{pk}_{request.user.id}_{request.user.role}"
+        cached_sale = cache.get(cache_key) 
+
+        if cached_sale is not None:
+            return Response(cached_sale)
+        
         sale = get_object_or_404(Sales, pk=pk)
 
         # Users can only view their own sales
@@ -206,6 +248,8 @@ class SalesDetailView(APIView):
             return Response({"error": "You do not have permission to view this sale."}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = SalesSerializer(sale, context={'request': request})
+        cache.set(cache_key, serializer.data, timeout=3600)
+
         return Response(serializer.data)
 
     def put(self, request, pk):
@@ -222,6 +266,10 @@ class SalesDetailView(APIView):
         serializer = SalesSerializer(sale, data=request.data, context={'request': request})
         if serializer.is_valid():
             serializer.save()
+            
+            cache_key = f"sale_{pk}_{request.user.id}_{request.user.role}"
+            cache.delete(cache_key)
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -237,4 +285,7 @@ class SalesDetailView(APIView):
             return Response({"error": "You do not have permission to delete this sale."}, status=status.HTTP_403_FORBIDDEN)
 
         sale.delete()
+        cache_key = f"sale_{pk}_{request.user.id}_{request.user.role}"
+        cache.delete(cache_key)
+        
         return Response({"message": "Sale deleted."}, status=status.HTTP_200_OK)

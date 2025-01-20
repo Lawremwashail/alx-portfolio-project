@@ -1,0 +1,45 @@
+services:
+  backend:
+    build:
+      context: ../backend  # Path to the backend directory
+      dockerfile: Dockerfile  # Dockerfile for backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../backend:/app  # Mount backend directory to /app in the container
+    depends_on:
+      - db
+    environment:
+      PYTHONUNBUFFERED: 1
+      DATABASE_HOST: db
+      DATABASE_PORT: 3306
+      DATABASE_NAME: posdbm
+      DATABASE_USER: root
+      DATABASE_PASSWORD: Mypassword
+
+  frontend:
+    build:
+      context: ../frontend/frontend  # Path to the frontend directory
+      dockerfile: Dockerfile  # Dockerfile for frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend/frontend:/app  # Mount frontend directory to /app in the container
+    stdin_open: true
+    tty: true
+
+  db:
+    image: mysql:8  # Use the official MySQL image
+    container_name: mysql-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: Mypassword
+      MYSQL_DATABASE: posdbm
+      MYSQL_USER: root
+      MYSQL_PASSWORD: Mypassword
+    volumes:
+      - mysql_data:/var/lib/mysql  # Persistent volume for MySQL data
+
+volumes:
+  mysql_data:
